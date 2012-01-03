@@ -14,15 +14,17 @@ define ufw::allow($proto="tcp", $port="all", $ip="", $from="any") {
     default => "$from/$proto",
   }
 
+  $matchstring = $port ? {
+      "all" => "$ipadr/$proto",
+      default => "$ipadr $port/$proto",
+  }
+
   exec { "ufw-allow-${proto}-from-${from}-to-${ipadr}-port-${port}":
     command => $port ? {
-      "all" => "ufw allow proto $proto from $from to $ipadr",
-      default => "ufw allow proto $proto from $from to $ipadr port $port",
+      "all" => "/usr/sbin/ufw allow proto $proto from $from to $ipadr",
+      default => "/usr/sbin/ufw allow proto $proto from $from to $ipadr port $port",
     },
-    unless => $port ? {
-      "all" => "ufw status | grep -E \"$ipadr/$proto +ALLOW +$from_match\"",
-      default => "ufw status | grep -E \"$ipadr $port/$proto +ALLOW +$from_match\"",
-    },
+    onlyif => "/usr/sbin/ufw status | /bin/grep -E \"$matchstring +ALLOW +from_match\"",
     require => Exec["ufw-default-deny"],
     before => Exec["ufw-enable"],
   }
